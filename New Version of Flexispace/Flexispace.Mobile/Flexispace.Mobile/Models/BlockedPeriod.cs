@@ -1,0 +1,19 @@
+using Flexispace.Mobile.Helpers;
+
+namespace Flexispace.Mobile.Models;
+
+public class BlockedPeriod
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string RoomId { get; set; } = string.Empty;
+    public DateTime Start { get; set; }
+    public DateTime End { get; set; }
+    public string Reason { get; set; } = string.Empty;
+    public string CreatedBy { get; set; } = string.Empty;
+
+    public string StatusLabel => BlockReasons.ToStatus(Reason).ToString();
+
+    public bool ShowReasonDetail =>
+        !string.IsNullOrWhiteSpace(Reason) &&
+        !string.Equals(Reason.Trim(), StatusLabel, StringComparison.OrdinalIgnoreCase);
+}

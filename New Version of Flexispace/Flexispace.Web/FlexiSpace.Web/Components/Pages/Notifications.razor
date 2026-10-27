@@ -1,0 +1,113 @@
+@* Alerts inbox with read/unread filtering and actions. *@
+@page "/notifications"
+@inject NotificationsViewModel Vm
+@inject IAuthService Auth
+@using Flexispace.Web.Helpers
+
+<PageTitle>Alerts · Flexispace</PageTitle>
+
+@if (!Auth.IsAuthenticated)
+{
+    <RedirectToLogin />
+}
+else
+{
+    <div class="fs-content-wide">
+        <div class="fs-alert-heading">
+            <div>
+                <h1>Alerts</h1>
+                <p class="fs-muted">Messages and updates for your FlexiSpace account.</p>
+            </div>
+            <button type="button" class="fs-btn fs-btn--ghost fs-btn--sm"
+                    disabled="@(Vm.IsBusy || Vm.UnreadMessages == 0)"
+                    @onclick="MarkAllRead">
+                Mark all read
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Vm.ErrorMessage))
+        {
+            <div class="fs-alert-error" role="alert">@Vm.ErrorMessage</div>
+        }
+
+        <div class="fs-alert-stats" aria-label="Alert totals">
+            <div class="fs-alert-stat"><span>Total messages</span><strong>@Vm.TotalMessages</strong></div>
+            <div class="fs-alert-stat fs-alert-stat--unread"><span>Unread messages</span><strong>@Vm.UnreadMessages</strong></div>
+        </div>
+
+        <div class="fs-alert-controls">
+            <label for="alert-filter">Filter alerts</label>
+            <select id="alert-filter" @bind="Vm.Filter" disabled="@Vm.IsBusy">
+                <option value="All">All messages</option>
+                <option value="Unread">Unread</option>
+                <option value="Read">Read</option>
+            </select>
+        </div>
+
+        @if (Vm.IsBusy)
+        {
+            <p class="fs-muted">Loading alerts…</p>
+        }
+        else if (Vm.IsEmpty)
+        {
+            <div class="fs-card" style="text-align:center; padding:48px">
+                <p class="fs-muted" style="margin:0">
+                    @(Vm.Filter == "Unread" && Vm.TotalMessages > 0
+                        ? "You have no unread alerts."
+                        : Vm.Filter == "Read" && Vm.TotalMessages > 0
+                            ? "You have no read alerts yet."
+                            : "You're all caught up — no alerts to show.")
+                </p>
+            </div>
+        }
+        else
+        {
+            @foreach (var n in Vm.Items)
+            {
+                <div class="fs-notification @(n.IsRead ? "fs-notification--read" : "")" @key="n.Id" @onclick="() => Open(n)">
+                    <div class="fs-notification__icon" style="background:@DisplayHelpers.NotificationAccent(n.Type)">
+                        @DisplayHelpers.NotificationIcon(n.Type)
+                    </div>
+                    <div>
+                        <strong style="font-size:15px">@n.Title</strong>
+                        <p class="fs-muted" style="font-size:13px; margin:4px 0">@n.Message</p>
+                        <span style="color:var(--fs-gold-deep); font-size:11px">@DisplayHelpers.TimeAgo(n.CreatedAt)</span>
+                        <div class="fs-notification__actions" @onclick:stopPropagation="true">
+                            <button type="button" class="fs-btn fs-btn--ghost fs-btn--sm" @onclick="() => ToggleRead(n)">@(n.IsRead ? "Mark unread" : "Mark read")</button>
+                            <button type="button" class="fs-btn fs-btn--ghost fs-btn--sm" @onclick="() => Delete(n)">Delete</button>
+                        </div>
+                    </div>
+                    @if (!n.IsRead) { <div class="fs-unread-dot"></div> }
+                </div>
+            }
+        }
+    </div>
+
+    <Modal @bind-IsOpen="ShowModal" Title="@ModalTitle" Message="@ModalMessage" />
+}
+
+@code {
+    private bool ShowModal { get; set; }
+    private string? ModalTitle { get; set; }
+    private string? ModalMessage { get; set; }
+
+    protected override async Task OnInitializedAsync() => await Vm.AppearingCommand.ExecuteAsync(null);
+    private Task MarkAllRead() => Vm.MarkAllReadCommand.ExecuteAsync(null);
+
+    private async Task Open(AppNotification n)
+    {
+        if (n.BookingId.HasValue)
+        {
+            await Vm.OpenNotificationCommand.ExecuteAsync(n);
+            return;
+        }
+        if (!n.IsRead)
+            await Vm.ToggleReadCommand.ExecuteAsync(n);
+        ModalTitle = n.Title;
+        ModalMessage = n.Message;
+        ShowModal = true;
+    }
+
+    private Task ToggleRead(AppNotification n) => Vm.ToggleReadCommand.ExecuteAsync(n);
+    private Task Delete(AppNotification n) => Vm.DeleteCommand.ExecuteAsync(n);
+}

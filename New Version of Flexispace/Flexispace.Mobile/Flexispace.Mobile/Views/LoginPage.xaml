@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Flexispace.Mobile.ViewModels"
+             xmlns:controls="clr-namespace:Flexispace.Mobile.Controls"
+             x:Class="Flexispace.Mobile.Views.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             BackgroundColor="{DynamicResource BrandPage}"
+             Shell.NavBarIsVisible="False"
+             Title="Sign in">
+
+    <ScrollView>
+        <VerticalStackLayout x:Name="LoginContent" Padding="0" Spacing="0">
+            <Border Style="{StaticResource HeroBanner}" Padding="24,36,24,28">
+                <VerticalStackLayout Spacing="10" MaximumWidthRequest="480" HorizontalOptions="Center">
+                    <Image Source="flexispace_logo.png" HeightRequest="72" Aspect="AspectFit" HorizontalOptions="Center" />
+                    <Label Text="SIGN IN" Style="{StaticResource EyebrowLabel}" TextColor="{StaticResource BrandGold}" HorizontalTextAlignment="Center" />
+                    <Label Text="Welcome back"
+                           TextColor="{StaticResource BrandIvory}"
+                           FontSize="26"
+                           FontAttributes="Bold"
+                           HorizontalTextAlignment="Center" />
+                    <Label Text="You run your business — we run the rest."
+                           TextColor="#C8C2B8"
+                           FontSize="14"
+                           HorizontalTextAlignment="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <VerticalStackLayout Padding="20,18,20,28" Spacing="16" MaximumWidthRequest="480" HorizontalOptions="Center">
+                <Border Style="{StaticResource ElevatedCard}" Padding="18,18">
+                    <VerticalStackLayout Spacing="12">
+                        <Label Text="Microsoft Entra" TextColor="{DynamicResource BrandInk}" FontAttributes="Bold" FontSize="16" />
+                        <Label Text="Sign in with your FlexiSpace Microsoft account."
+                               Style="{StaticResource MutedLabel}" FontSize="12" />
+
+                        <Button Text="Sign in with Microsoft"
+                                Command="{Binding LoginWithMicrosoftCommand}"
+                                Style="{StaticResource GoldButton}"
+                                Margin="0,8,0,0"
+                                IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}" />
+
+                        <Button Text="Continue as guest"
+                                Command="{Binding ContinueAsGuestCommand}"
+                                Style="{StaticResource GhostButton}"
+                                IsEnabled="{Binding IsBusy, Converter={StaticResource InvertedBoolConverter}}" />
+
+                        <Button Text="Back to browsing"
+                                Command="{Binding BackToBrowsingCommand}"
+                                Style="{StaticResource GhostButton}"
+                                IsVisible="{Binding IsGuest}" />
+
+                        <ActivityIndicator IsRunning="{Binding IsBusy}"
+                                           IsVisible="{Binding IsBusy}"
+                                           Color="{StaticResource BrandGold}" />
+
+                        <Border StrokeThickness="0"
+                                StrokeShape="RoundRectangle 12"
+                                BackgroundColor="{DynamicResource BrandTealSoft}"
+                                Padding="12,10"
+                                Margin="0,4,0,0">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding OpenPrivacyCommand}" />
+                            </Border.GestureRecognizers>
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                                <Label Style="{StaticResource MaterialGlyph}" Text="&#xe32a;" FontSize="18"
+                                       TextColor="{DynamicResource BrandTeal}" VerticalOptions="Center" />
+                                <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                                    <Label Text="Your details stay protected" TextColor="{DynamicResource BrandInk}" FontAttributes="Bold" FontSize="12" />
+                                    <Label Text="Read our PoPIA privacy policy" TextColor="{DynamicResource BrandMuted}" FontSize="11" />
+                                </VerticalStackLayout>
+                                <Label Grid.Column="2" Style="{StaticResource MaterialGlyph}" Text="&#xe5cc;" FontSize="16"
+                                       TextColor="{DynamicResource BrandMuted}" VerticalOptions="Center" />
+                            </Grid>
+                        </Border>
+                    </VerticalStackLayout>
+                </Border>
+
+                <controls:SocialLinksBar Margin="0,10,0,4" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

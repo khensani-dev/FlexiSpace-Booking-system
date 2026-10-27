@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Flexispace.Mobile.ViewModels"
+             xmlns:models="clr-namespace:Flexispace.Mobile.Models"
+             x:Class="Flexispace.Mobile.Views.UsersPage"
+             x:Name="Root"
+             x:DataType="vm:UsersViewModel"
+             Title="Users"
+             BackgroundColor="{DynamicResource BrandPage}">
+
+    <RefreshView Command="{Binding AppearingCommand}" IsRefreshing="{Binding IsBusy}">
+        <ScrollView>
+            <VerticalStackLayout Padding="20" Spacing="16" MaximumWidthRequest="720" HorizontalOptions="Center">
+                <Label Text="Users" Style="{StaticResource SectionTitle}" FontSize="24" />
+                <Label Text="Create and manage identities in Microsoft Entra. Provision Entra users here by assigning them a location. Account access and roles are managed in Entra."
+                       Style="{StaticResource MutedLabel}" />
+
+                <Border IsVisible="{Binding Message, Converter={StaticResource StringNotEmptyConverter}}"
+                        StrokeThickness="0"
+                        StrokeShape="RoundRectangle 10"
+                        BackgroundColor="#26C4A035"
+                        Padding="14,12">
+                    <Label Text="{Binding Message}" TextColor="{DynamicResource BrandInk}" FontSize="13" />
+                </Border>
+
+                <VerticalStackLayout IsVisible="{Binding HasAccess}" Spacing="16">
+                    <Border Style="{StaticResource ElevatedCard}" Padding="16" IsVisible="{Binding IsEditingForm}">
+                        <VerticalStackLayout Spacing="10">
+                            <Label Text="{Binding SelectedUser.Name}" TextColor="{DynamicResource BrandInk}" FontAttributes="Bold" FontSize="16" />
+                            <Label Text="{Binding SelectedUser.Email}" Style="{StaticResource MutedLabel}" />
+                            <Label Text="{Binding SelectedUser.EntraRoleLabel, StringFormat='Role: {0}'}" Style="{StaticResource MutedLabel}" />
+                            <Label Text="{Binding SelectedUser.AccountStatusLabel, StringFormat='Account status: {0}'}" Style="{StaticResource MutedLabel}" />
+                            <Label Text="No FlexiSpace app role is assigned in Entra. Assign the role in Entra, then refresh this page to enable provisioning."
+                                   IsVisible="{Binding SelectedUser.HasAssignedFlexiSpaceRole, Converter={StaticResource InvertedBoolConverter}}"
+                                   Style="{StaticResource MutedLabel}" />
+                            <Label Text="LOCATION" Style="{StaticResource MutedLabel}" FontSize="11" FontAttributes="Bold" />
+                            <Picker ItemsSource="{Binding Locations}" ItemDisplayBinding="{Binding Name}"
+                                    SelectedItem="{Binding SelectedLocation}" TextColor="{DynamicResource BrandInk}"
+                                    BackgroundColor="{DynamicResource BrandSurface}" />
+                            <Button Text="Provision user" Command="{Binding SaveUserCommand}"
+                                    IsVisible="{Binding IsProvisioning}"
+                                    Style="{StaticResource GoldButton}" />
+                            <Button Text="Save location" Command="{Binding SaveUserCommand}"
+                                    IsVisible="{Binding IsEditingLocation}" Style="{StaticResource GoldButton}" />
+                            <Button Text="Cancel" Command="{Binding CancelEditCommand}" Style="{StaticResource GhostButton}" />
+                        </VerticalStackLayout>
+                    </Border>
+
+                    <Label Text="Directory" TextColor="{DynamicResource BrandGoldDeep}" FontAttributes="Bold" />
+
+                    <Border BackgroundColor="{DynamicResource BrandSurface}"
+                            Stroke="{DynamicResource BrandLine}"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 12"
+                            Padding="8,0">
+                        <SearchBar Placeholder="Search name, email, or reference"
+                                   Text="{Binding SearchText}"
+                                   TextColor="{DynamicResource BrandInk}"
+                                   PlaceholderColor="{DynamicResource BrandMuted}"
+                                   BackgroundColor="Transparent"
+                                   CancelButtonColor="{DynamicResource BrandGoldDeep}" />
+                    </Border>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <VerticalStackLayout Grid.Column="0" Spacing="4">
+                            <Label Text="ROLE" Style="{StaticResource MutedLabel}" FontSize="11" FontAttributes="Bold" />
+                            <Picker ItemsSource="{Binding RoleFilters}" ItemDisplayBinding="{Binding Name}"
+                                    SelectedItem="{Binding SelectedRoleFilter}" TextColor="{DynamicResource BrandInk}"
+                                    BackgroundColor="{DynamicResource BrandSurface}" />
+                        </VerticalStackLayout>
+                        <VerticalStackLayout Grid.Column="1" Spacing="4">
+                            <Label Text="LOCATION" Style="{StaticResource MutedLabel}" FontSize="11" FontAttributes="Bold" />
+                            <Picker ItemsSource="{Binding LocationFilters}" ItemDisplayBinding="{Binding Name}"
+                                    SelectedItem="{Binding SelectedLocationFilter}" TextColor="{DynamicResource BrandInk}"
+                                    BackgroundColor="{DynamicResource BrandSurface}" />
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Border Grid.Column="0" Padding="12,10" StrokeThickness="0" StrokeShape="RoundRectangle 10" BackgroundColor="{DynamicResource BrandSurface}">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ShowProvisionedTabCommand}" />
+                            </Border.GestureRecognizers>
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsProvisionedTab}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="{StaticResource BrandCharcoal}" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Label Text="{Binding ProvisionedTotalCount, StringFormat='Provisioned · {0} total'}" HorizontalTextAlignment="Center" TextColor="{DynamicResource BrandMuted}">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsProvisionedTab}" Value="True">
+                                        <Setter Property="TextColor" Value="{StaticResource BrandIvory}" />
+                                        <Setter Property="FontAttributes" Value="Bold" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                        </Border>
+                        <Border Grid.Column="1" Padding="12,10" StrokeThickness="0" StrokeShape="RoundRectangle 10" BackgroundColor="{DynamicResource BrandSurface}">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding ShowUnprovisionedTabCommand}" />
+                            </Border.GestureRecognizers>
+                            <Border.Triggers>
+                                <DataTrigger TargetType="Border" Binding="{Binding IsUnprovisionedTab}" Value="True">
+                                    <Setter Property="BackgroundColor" Value="{StaticResource BrandCharcoal}" />
+                                </DataTrigger>
+                            </Border.Triggers>
+                            <Label Text="{Binding UnprovisionedTotalCount, StringFormat='Unprovisioned · {0} total'}" HorizontalTextAlignment="Center" TextColor="{DynamicResource BrandMuted}">
+                                <Label.Triggers>
+                                    <DataTrigger TargetType="Label" Binding="{Binding IsUnprovisionedTab}" Value="True">
+                                        <Setter Property="TextColor" Value="{StaticResource BrandIvory}" />
+                                        <Setter Property="FontAttributes" Value="Bold" />
+                                    </DataTrigger>
+                                </Label.Triggers>
+                            </Label>
+                        </Border>
+                    </Grid>
+
+                    <VerticalStackLayout IsVisible="{Binding IsProvisionedTab}" Spacing="8">
+                    <Label Text="{Binding ProvisionedTotalCount, StringFormat='Provisioned users · {0} total'}" TextColor="{DynamicResource BrandGoldDeep}" FontAttributes="Bold" />
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding ProvisionedUsers}" Spacing="8">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="models:User">
+                                <Border Style="{StaticResource ElevatedCard}" Padding="14,12">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="{Binding Name}" TextColor="{DynamicResource BrandInk}" FontAttributes="Bold" />
+                                            <Label Text="{Binding Email}" TextColor="{DynamicResource BrandMuted}" FontSize="12" />
+                                            <Label Text="{Binding RoleLabel}" TextColor="{DynamicResource BrandMuted}" FontSize="12" />
+                                            <Label Text="{Binding LocationLabel}" TextColor="{DynamicResource BrandMuted}" FontSize="12" />
+                                            <Label Text="{Binding AccountStatusLabel, StringFormat='Account status: {0}'}" TextColor="{DynamicResource BrandMuted}" FontSize="11" />
+                                        </VerticalStackLayout>
+                                        <Button Grid.Column="1" Text="Edit location" VerticalOptions="Center"
+                                                Command="{Binding Source={x:Reference Root}, Path=BindingContext.EditLocationCommand}"
+                                                CommandParameter="{Binding .}" Style="{StaticResource GhostButton}"
+                                                Padding="10,6" FontSize="11" MinimumHeightRequest="36" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <Label Text="{Binding EmptyProvisionedMessage}" Style="{StaticResource MutedLabel}" />
+                    </VerticalStackLayout>
+
+                    <VerticalStackLayout IsVisible="{Binding IsUnprovisionedTab}" Spacing="8">
+                    <Label Text="{Binding UnprovisionedTotalCount, StringFormat='Unprovisioned Entra users · {0} total'}" TextColor="{DynamicResource BrandGoldDeep}" FontAttributes="Bold" />
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding UnprovisionedUsers}" Spacing="8">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="models:User">
+                                <Border Style="{StaticResource ElevatedCard}" Padding="14,12">
+                                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="{Binding Name}" TextColor="{DynamicResource BrandInk}" FontAttributes="Bold" />
+                                            <Label Text="{Binding Email}" TextColor="{DynamicResource BrandMuted}" FontSize="12" />
+                                            <Label Text="{Binding EntraRoleLabel, StringFormat='Entra role: {0}'}" TextColor="{DynamicResource BrandMuted}" FontSize="12" />
+                                            <Label Text="{Binding AccountStatusLabel, StringFormat='Account status: {0}'}" TextColor="{DynamicResource BrandMuted}" FontSize="11" />
+                                        </VerticalStackLayout>
+                                        <Button Grid.Column="1" Text="Assign location &amp; provision" VerticalOptions="Center"
+                                                Command="{Binding Source={x:Reference Root}, Path=BindingContext.ProvisionUserCommand}"
+                                                CommandParameter="{Binding .}" Style="{StaticResource GoldButton}"
+                                                Padding="10,6" FontSize="11" MinimumHeightRequest="36" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                    <Label Text="{Binding EmptyUnprovisionedMessage}" Style="{StaticResource MutedLabel}" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+</ContentPage>

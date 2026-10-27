@@ -1,0 +1,314 @@
+@page "/manage/catalog"
+@inject IAuthService Auth
+@inject ICatalogManagementService Catalog
+@inject IJSRuntime JS
+@using Flexispace.Web.Api
+
+<PageTitle>Equipment &amp; catering</PageTitle>
+
+@if (!Auth.IsAuthenticated)
+{
+    <RedirectToLogin />
+}
+else if (Auth.CurrentUser?.Role != UserRole.Administrator)
+{
+    <div class="fs-content-wide"><p class="fs-error">Only Administrators can manage equipment and catering options.</p></div>
+}
+else
+{
+    <div class="fs-content-wide fs-catalog-page">
+        <div class="fs-catalog-heading">
+            <div>
+                <p class="fs-eyebrow">BOOKING OPTIONS</p>
+                <h1>Equipment &amp; catering</h1>
+                <p class="fs-muted">Manage the optional items customers can request when booking a room.</p>
+            </div>
+            <div class="fs-catalog-actions">
+                <button type="button" class="fs-btn fs-btn--gold" disabled="@_busy" @onclick="OpenEquipmentForm">＋ Add equipment</button>
+                <button type="button" class="fs-btn fs-btn--ghost" disabled="@_busy" @onclick="OpenCateringForm">＋ Add catering</button>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <p class="fs-error" role="alert">@_error</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <p class="fs-message" role="status">@_message</p>
+        }
+
+        <div class="fs-catalog-stats" aria-label="Catalog summary">
+            <div class="fs-catalog-stat"><span>Equipment options</span><strong>@_equipment.Count</strong></div>
+            <div class="fs-catalog-stat"><span>Catering options</span><strong>@_catering.Count</strong></div>
+            <div class="fs-catalog-stat fs-catalog-stat--available"><span>Available for booking</span><strong>@AvailableCount</strong></div>
+        </div>
+
+        @if (_busy && !_loaded)
+        {
+            <div class="fs-card"><p class="fs-muted" style="margin:0">Loading catalogue…</p></div>
+        }
+        else
+        {
+            <div class="fs-catalog-tabs" role="tablist" aria-label="Catalog categories">
+                <button type="button" role="tab" aria-selected="@(_activeTab == "equipment")"
+                        class="fs-catalog-tab @(_activeTab == "equipment" ? "is-active" : "")"
+                        @onclick='() => SelectTab("equipment")'>
+                    Equipment <span>@_equipment.Count</span>
+                </button>
+                <button type="button" role="tab" aria-selected="@(_activeTab == "catering")"
+                        class="fs-catalog-tab @(_activeTab == "catering" ? "is-active" : "")"
+                        @onclick='() => SelectTab("catering")'>
+                    Catering <span>@_catering.Count</span>
+                </button>
+            </div>
+
+            @if (_activeTab == "equipment")
+            {
+                <section role="tabpanel" class="fs-catalog-panel">
+                    <div class="fs-catalog-panel-heading">
+                        <div>
+                            <h2>Additional equipment</h2>
+                            <p class="fs-muted">Items customers can request beyond equipment already included in a room.</p>
+                        </div>
+                        <span class="fs-catalog-count">@_equipment.Count total · @(_equipment.Count(x => x.IsActive)) active</span>
+                    </div>
+
+                    @if (_showEquipmentForm)
+                    {
+                        <div class="fs-card fs-catalog-form">
+                            <h3>New equipment option</h3>
+                            <div class="fs-catalog-form-fields">
+                                <label><span class="fs-label">Name</span><input class="fs-field" @bind="_newEquipmentName" /></label>
+                                <label><span class="fs-label">Description</span><textarea class="fs-field" @bind="_newEquipmentDescription" rows="2"></textarea></label>
+                            </div>
+                            <div class="fs-flex">
+                                <button type="button" class="fs-btn fs-btn--gold" disabled="@_busy" @onclick="CreateEquipmentAsync">Add equipment</button>
+                                <button type="button" class="fs-btn fs-btn--ghost" disabled="@_busy" @onclick="() => _showEquipmentForm = false">Cancel</button>
+                            </div>
+                        </div>
+                    }
+
+                    @if (_equipment.Count == 0)
+                    {
+                        <div class="fs-card fs-catalog-empty"><strong>No equipment options yet</strong><p class="fs-muted">Add equipment customers can request during booking.</p></div>
+                    }
+                    else
+                    {
+                        <div class="fs-catalog-grid">
+                            @foreach (var item in _equipment)
+                            {
+                                <article class="fs-card fs-catalog-item">
+                                    <div class="fs-catalog-item-heading">
+                                        <strong>@item.Name</strong>
+                                        <span class="fs-catalog-status @(item.IsActive ? "is-active" : "")">@(item.IsActive ? "Available" : "Inactive")</span>
+                                    </div>
+                                    <label><span class="fs-label">Name</span><input class="fs-field" @bind="item.Name" /></label>
+                                    <label><span class="fs-label">Description</span><textarea class="fs-field" @bind="item.Description" rows="2"></textarea></label>
+                                    <label class="fs-catalog-toggle"><input type="checkbox" @bind="item.IsActive" /> Available for new bookings</label>
+                                    <div class="fs-flex">
+                                        <button type="button" class="fs-btn fs-btn--gold fs-btn--sm" disabled="@_busy" @onclick="() => SaveEquipmentAsync(item)">Save changes</button>
+                                        <button type="button" class="fs-btn fs-btn--ghost fs-btn--sm" disabled="@_busy" @onclick="() => DeleteEquipmentAsync(item)">Delete</button>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    }
+                </section>
+            }
+            else
+            {
+                <section role="tabpanel" class="fs-catalog-panel">
+                    <div class="fs-catalog-panel-heading">
+                        <div>
+                            <h2>Catering options</h2>
+                            <p class="fs-muted">Optional food and drink choices customers can add to a booking.</p>
+                        </div>
+                        <span class="fs-catalog-count">@_catering.Count total · @(_catering.Count(x => x.IsActive)) active</span>
+                    </div>
+
+                    @if (_showCateringForm)
+                    {
+                        <div class="fs-card fs-catalog-form">
+                            <h3>New catering option</h3>
+                            <div class="fs-catalog-form-fields">
+                                <label><span class="fs-label">Name</span><input class="fs-field" @bind="_newCateringName" /></label>
+                                <label><span class="fs-label">Description <span class="fs-muted">(optional)</span></span><textarea class="fs-field" @bind="_newCateringDescription" rows="2"></textarea></label>
+                            </div>
+                            <div class="fs-flex">
+                                <button type="button" class="fs-btn fs-btn--gold" disabled="@_busy" @onclick="CreateCateringAsync">Add catering</button>
+                                <button type="button" class="fs-btn fs-btn--ghost" disabled="@_busy" @onclick="() => _showCateringForm = false">Cancel</button>
+                            </div>
+                        </div>
+                    }
+
+                    @if (_catering.Count == 0)
+                    {
+                        <div class="fs-card fs-catalog-empty"><strong>No catering options yet</strong><p class="fs-muted">Add catering customers can request during booking.</p></div>
+                    }
+                    else
+                    {
+                        <div class="fs-catalog-grid">
+                            @foreach (var item in _catering)
+                            {
+                                <article class="fs-card fs-catalog-item">
+                                    <div class="fs-catalog-item-heading">
+                                        <strong>@item.Name</strong>
+                                        <span class="fs-catalog-status @(item.IsActive ? "is-active" : "")">@(item.IsActive ? "Available" : "Inactive")</span>
+                                    </div>
+                                    <label><span class="fs-label">Name</span><input class="fs-field" @bind="item.Name" /></label>
+                                    <label><span class="fs-label">Description <span class="fs-muted">(optional)</span></span><textarea class="fs-field" @bind="item.Description" rows="2"></textarea></label>
+                                    <label class="fs-catalog-toggle"><input type="checkbox" @bind="item.IsActive" /> Available for new bookings</label>
+                                    <div class="fs-flex">
+                                        <button type="button" class="fs-btn fs-btn--gold fs-btn--sm" disabled="@_busy" @onclick="() => SaveCateringAsync(item)">Save changes</button>
+                                        <button type="button" class="fs-btn fs-btn--ghost fs-btn--sm" disabled="@_busy" @onclick="() => DeleteCateringAsync(item)">Delete</button>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    }
+                </section>
+            }
+        }
+    </div>
+}
+
+@code {
+    private List<EquipmentDto> _equipment = [];
+    private List<CateringDto> _catering = [];
+    private string _newEquipmentName = string.Empty;
+    private string _newEquipmentDescription = string.Empty;
+    private string _newCateringName = string.Empty;
+    private string _newCateringDescription = string.Empty;
+    private string? _error;
+    private string? _message;
+    private bool _busy;
+    private bool _loaded;
+    private string _activeTab = "equipment";
+    private bool _showEquipmentForm;
+    private bool _showCateringForm;
+    private int AvailableCount => _equipment.Count(x => x.IsActive) + _catering.Count(x => x.IsActive);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private void SelectTab(string tab)
+    {
+        _activeTab = tab;
+        _showEquipmentForm = false;
+        _showCateringForm = false;
+    }
+
+    private void OpenEquipmentForm()
+    {
+        _activeTab = "equipment";
+        _showCateringForm = false;
+        _showEquipmentForm = !_showEquipmentForm;
+    }
+
+    private void OpenCateringForm()
+    {
+        _activeTab = "catering";
+        _showEquipmentForm = false;
+        _showCateringForm = !_showCateringForm;
+    }
+
+    private async Task LoadAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            _equipment = (await Catalog.GetEquipmentAsync()).ToList();
+            _catering = (await Catalog.GetCateringAsync()).ToList();
+            _loaded = true;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Could not load the catalogue: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CreateEquipmentAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newEquipmentName) || string.IsNullOrWhiteSpace(_newEquipmentDescription))
+        {
+            _error = "Enter an equipment name and description.";
+            _message = null;
+            return;
+        }
+        await RunAsync(() => Catalog.CreateEquipmentAsync(_newEquipmentName, _newEquipmentDescription), "Equipment option added.");
+        if (string.IsNullOrEmpty(_error))
+        {
+            _newEquipmentName = string.Empty;
+            _newEquipmentDescription = string.Empty;
+            _showEquipmentForm = false;
+        }
+    }
+
+    private Task SaveEquipmentAsync(EquipmentDto item) =>
+        RunAsync(() => Catalog.UpdateEquipmentAsync(item), $"{item.Name} updated.");
+
+    private async Task DeleteEquipmentAsync(EquipmentDto item)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Delete '{item.Name}'? If it is in booking history, the system will prevent deletion; you can deactivate it instead."))
+            return;
+        await RunAsync(() => Catalog.DeleteEquipmentAsync(item.Id), $"{item.Name} deleted.");
+    }
+
+    private async Task CreateCateringAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newCateringName))
+        {
+            _error = "Enter a catering option name.";
+            _message = null;
+            return;
+        }
+        await RunAsync(() => Catalog.CreateCateringAsync(_newCateringName, _newCateringDescription), "Catering option added.");
+        if (string.IsNullOrEmpty(_error))
+        {
+            _newCateringName = string.Empty;
+            _newCateringDescription = string.Empty;
+            _showCateringForm = false;
+        }
+    }
+
+    private Task SaveCateringAsync(CateringDto item) =>
+        RunAsync(() => Catalog.UpdateCateringAsync(item), $"{item.Name} updated.");
+
+    private async Task DeleteCateringAsync(CateringDto item)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"Delete '{item.Name}'? If it is in booking history, the system will prevent deletion; you can deactivate it instead."))
+            return;
+        await RunAsync(() => Catalog.DeleteCateringAsync(item.Id), $"{item.Name} deleted.");
+    }
+
+    private async Task RunAsync(Func<Task<(bool Ok, string Message)>> operation, string successMessage)
+    {
+        _busy = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            var result = await operation();
+            if (!result.Ok)
+                _error = result.Message;
+            else
+            {
+                _message = successMessage;
+                await LoadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

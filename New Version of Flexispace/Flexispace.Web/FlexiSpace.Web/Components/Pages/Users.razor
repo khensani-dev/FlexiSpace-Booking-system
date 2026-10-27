@@ -1,0 +1,268 @@
+@* Administrator user directory: provisioned FlexiSpace accounts and unprovisioned Entra identities. *@
+@page "/users"
+@inject UsersViewModel Vm
+@inject IAuthService Auth
+
+<PageTitle>Users · Flexispace</PageTitle>
+
+@if (!Auth.IsAuthenticated)
+{
+    <RedirectToLogin />
+}
+else
+{
+    <div class="fs-content-wide">
+        <p class="fs-subheading" style="margin-bottom:20px">@Vm.Subtitle</p>
+
+        @if (!string.IsNullOrEmpty(Vm.ErrorMessage))
+        {
+            <p id="fs-error-banner" class="fs-error" style="margin-bottom:16px">@Vm.ErrorMessage</p>
+        }
+        @if (!string.IsNullOrEmpty(Vm.Message))
+        {
+            <p class="fs-message" style="margin-bottom:16px">@Vm.Message</p>
+        }
+
+        @if (!Vm.HasAccess)
+        {
+            <div class="fs-card"><p class="fs-muted" style="margin:0">@Vm.Subtitle</p></div>
+        }
+        else
+        {
+            @if (Vm.IsFormOpen)
+            {
+                <div class="fs-card fs-stack" style="margin-bottom:24px">
+                    <strong>@(Vm.IsProvisioning ? "Provision user" : "Edit user")</strong>
+                    @if (Vm.IsProvisioning)
+                    {
+                        <p class="fs-muted" style="margin:0">
+                            This links the existing Entra identity to FlexiSpace. Assign its FlexiSpace app role in Entra first, then choose a location here.
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="fs-muted" style="margin:0">
+                            Status · @(Vm.FormIsActive ? "Active" : "Inactive")
+                        </p>
+                    }
+                    <div class="fs-user-form-grid">
+                        <div>
+                            <span class="fs-label">Name</span>
+                            <p style="margin:0">@Vm.FormFirstName @Vm.FormLastName</p>
+                        </div>
+                        <div>
+                            <span class="fs-label">Email</span>
+                            <p style="margin:0">@Vm.FormEmail</p>
+                        </div>
+                        <div>
+                            <span class="fs-label">FlexiSpace role</span>
+                            <p style="margin:0">@Vm.FormRoleLabel</p>
+                        </div>
+                        @if (!Vm.IsProvisioning)
+                        {
+                            <div>
+                                <span class="fs-label">Account status</span>
+                                <p style="margin:0">@(Vm.FormIsActive ? "Active" : "Inactive")</p>
+                            </div>
+                        }
+                        <div>
+                            <label class="fs-label" for="user-location">Location</label>
+                            <select id="user-location" class="fs-field" @bind="Vm.FormLocationId">
+                                <option value="">All locations</option>
+                                @foreach (var location in Vm.Locations)
+                                {
+                                    <option value="@location.Id">@location.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="fs-flex">
+                        <button type="button" class="fs-btn @(Vm.IsProvisioning ? "fs-btn--gold" : "fs-btn--ghost")" disabled="@Vm.IsBusy" @onclick="Save">
+                            @(Vm.IsProvisioning ? "Provision" : "Save")
+                        </button>
+                        <button type="button" class="fs-btn fs-btn--ghost" @onclick="Cancel">Cancel</button>
+                    </div>
+                </div>
+            }
+
+            @if (Vm.IsBusy)
+            {
+                <p class="fs-muted">Loading users…</p>
+            }
+            else if (Vm.IsEmpty)
+            {
+                <div class="fs-card"><p class="fs-muted" style="margin:0">No users were returned from FlexiSpace or Microsoft Entra.</p></div>
+            }
+            else
+            {
+                <div class="fs-user-filters">
+                    <div>
+                        <label class="fs-label" for="filter-users">Search</label>
+                        <input id="filter-users"
+                               class="fs-field"
+                               placeholder="Search user ID, name, or email…"
+                               @bind="Vm.FilterQuery"
+                               @bind:event="oninput" />
+                    </div>
+                    <div>
+                        <label class="fs-label" for="filter-role">Role</label>
+                        <select id="filter-role" class="fs-field" @bind="Vm.FilterRole">
+                            <option value="">All roles</option>
+                            @foreach (var role in Vm.Roles)
+                            {
+                                <option value="@role">@RolePermissions.DisplayName(role)</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="fs-label" for="filter-location">Location</label>
+                        <select id="filter-location" class="fs-field" @bind="Vm.FilterLocationId">
+                            <option value="">All locations</option>
+                            @foreach (var location in Vm.Locations)
+                            {
+                                <option value="@location.Id">@location.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="fs-flex" role="tablist" aria-label="User lists" style="margin:18px 0">
+                    <button type="button"
+                            class="fs-btn @(Vm.IsProvisionedTab ? "fs-btn--gold" : "fs-btn--ghost")"
+                            role="tab" aria-selected="@Vm.IsProvisionedTab"
+                            @onclick="ShowProvisioned">
+                        Provisioned · @Vm.ProvisionedTotalCount total
+                    </button>
+                    <button type="button"
+                            class="fs-btn @(Vm.IsUnprovisionedTab ? "fs-btn--gold" : "fs-btn--ghost")"
+                            role="tab" aria-selected="@Vm.IsUnprovisionedTab"
+                            @onclick="ShowUnprovisioned">
+                        Unprovisioned · @Vm.UnprovisionedTotalCount total
+                    </button>
+                </div>
+
+                @if (Vm.IsProvisionedTab)
+                {
+                <section class="fs-user-section">
+                    <div class="fs-user-section__head">
+                        <h2 class="fs-section-title">Provisioned</h2>
+                        <span class="fs-muted">@Vm.ProvisionedUsers.Count shown of @Vm.ProvisionedTotalCount</span>
+                    </div>
+                    @if (Vm.ProvisionedUsers.Count == 0)
+                    {
+                        <div class="fs-card"><p class="fs-muted" style="margin:0">@(HasFilters ? "No provisioned users match these filters." : "No FlexiSpace accounts yet.")</p></div>
+                    }
+                    else
+                    {
+                        <div class="fs-user-table-wrap">
+                            <table class="fs-user-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Location</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var user in Vm.ProvisionedUsers)
+                                    {
+                                        <tr class="@(user.IsActive ? "" : "is-inactive")">
+                                            <td>@(user.ApiId > 0 ? user.ApiId.ToString() : "—")</td>
+                                            <td><strong>@user.Name</strong></td>
+                                            <td>@user.Email</td>
+                                            <td><span class="fs-pill" style="background:var(--fs-gold-deep)">@user.RoleLabel</span></td>
+                                            <td>@user.Location</td>
+                                            <td>@user.Status</td>
+                                            <td>@user.CreatedAt</td>
+                                            <td>
+                                                <div class="fs-user-table__actions">
+                                                    <button type="button" class="fs-btn fs-btn--ghost fs-btn--sm" @onclick="() => Edit(user)" @onclick:stopPropagation="true">Edit</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+                }
+                @if (Vm.IsUnprovisionedTab)
+                {
+                <section class="fs-user-section">
+                    <div class="fs-user-section__head">
+                        <h2 class="fs-section-title">Unprovisioned</h2>
+                        <span class="fs-muted">@Vm.UnprovisionedUsers.Count shown of @Vm.UnprovisionedTotalCount</span>
+                    </div>
+                    @if (Vm.UnprovisionedUsers.Count == 0)
+                    {
+                        <div class="fs-card"><p class="fs-muted" style="margin:0">@(HasFilters ? "No unprovisioned users match these filters." : "Every Microsoft Entra identity already has a FlexiSpace account.")</p></div>
+                    }
+                    else
+                    {
+                        <div class="fs-user-table-wrap">
+                            <table class="fs-user-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Location</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var user in Vm.UnprovisionedUsers)
+                                    {
+                                        <tr>
+                                            <td>@(user.ApiId > 0 ? user.ApiId.ToString() : "—")</td>
+                                            <td><strong>@user.Name</strong></td>
+                                            <td>@user.Email</td>
+                                            <td><span class="fs-pill" style="background:var(--fs-gold-deep)">@user.RoleLabel</span></td>
+                                            <td>@user.Location</td>
+                                            <td>@user.Status</td>
+                                            <td>@user.CreatedAt</td>
+                                            <td>
+                                                <div class="fs-user-table__actions">
+                                                    <button type="button" class="fs-btn fs-btn--gold fs-btn--sm" @onclick="() => Provision(user)" @onclick:stopPropagation="true">Provision</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </section>
+                }
+            }
+        }
+    </div>
+}
+
+@code {
+    private bool HasFilters =>
+        !string.IsNullOrEmpty(Vm.FilterRole) ||
+        !string.IsNullOrEmpty(Vm.FilterLocationId) ||
+        !string.IsNullOrWhiteSpace(Vm.FilterQuery);
+
+    protected override async Task OnInitializedAsync() =>
+        await Vm.AppearingCommand.ExecuteAsync(null);
+
+    private void Edit(UserDirectoryRow user) => Vm.StartEditCommand.Execute(user);
+    private void Provision(UserDirectoryRow user) => Vm.StartProvisionCommand.Execute(user);
+    private void ShowProvisioned() => Vm.ShowProvisionedTabCommand.Execute(null);
+    private void ShowUnprovisioned() => Vm.ShowUnprovisionedTabCommand.Execute(null);
+    private void Cancel() => Vm.CancelFormCommand.Execute(null);
+    private Task Save() => Vm.SaveCommand.ExecuteAsync(null);
+    private Task Activate() => Vm.ActivateCommand.ExecuteAsync(null);
+    private Task Remove(UserDirectoryRow user) => Vm.DeleteUserAsync(user);
+}

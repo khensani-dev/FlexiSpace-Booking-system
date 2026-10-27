@@ -1,0 +1,27 @@
+using Flexispace.Core.Models;
+
+namespace Flexispace.Core.Services;
+
+public interface IBookingService
+{
+    Task<IReadOnlyList<Booking>> GetBookingsAsync(string? locationId = null, Guid? userId = null, DateTime? day = null);
+    Task<IReadOnlyList<Booking>> GetBookingsForCurrentUserScopeAsync(DateTime? day = null);
+    Task<Booking?> GetBookingAsync(Guid bookingId);
+    Task<BookingResult> CreateBookingAsync(BookingRequest request);
+    Task<BookingResult> CancelBookingAsync(Guid bookingId);
+    Task<bool> ApproveBookingAsync(Guid bookingId);
+    Task<bool> DeclineBookingAsync(Guid bookingId);
+    Task<BookingResult> UpdateBookingAsync(Guid bookingId, DateTime start, DateTime end, int attendees, string notes);
+    Task<BookingResult> BlockRoomAsync(string roomId, DateTime start, DateTime end, string reason);
+    Task<IReadOnlyList<BlockedPeriod>> GetBlockedPeriodsAsync(string? roomId = null);
+    Task<bool> RemoveBlockedPeriodAsync(Guid blockId);
+    Task<IReadOnlyList<Booking>> GetTodaysBookingsAsync();
+    Task<IReadOnlyList<OccupiedSlot>> GetOccupiedSlotsAsync(string roomId, DateTime day);
+}
+
+public sealed class OccupiedSlot
+{
+    public TimeSpan Start { get; init; }
+    public TimeSpan End { get; init; }
+}
+

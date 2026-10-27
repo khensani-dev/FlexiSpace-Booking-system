@@ -1,0 +1,208 @@
+@* Authenticated app shell: sidebar navigation, page header, and content area. *@
+@inherits LayoutComponentBase
+@inject IAuthService Auth
+@inject NavigationManager Navigation
+@inject PrivacyConsentService Consent
+@implements IDisposable
+
+@if (ShowAppShell)
+{
+    <CascadingValue Name="SignOutPrompt" Value="PromptSignOutHandler">
+    <div class="fs-shell">
+        <aside class="fs-sidebar">
+            <div class="fs-sidebar__brand">
+                <a href="/home"><img class="fs-sidebar__logo" src="/images/flexispace_logo.png" alt="Flexispace" /></a>
+            </div>
+            <nav class="fs-sidebar__nav">
+                @foreach (var tab in VisibleTabs)
+                {
+                    <NavLink class="fs-nav-item" href="@tab.Href" Match="@tab.Match">
+                        <NavIcon Name="@tab.Icon" />
+                        <span>@tab.Label</span>
+                    </NavLink>
+                }
+            </nav>
+            <div class="fs-sidebar__footer">
+                <div class="fs-sidebar__identity">
+                    <div class="fs-sidebar__user">@(Auth.CurrentUser?.Name ?? "Guest")</div>
+                    <div class="fs-sidebar__role">@(Auth.IsGuest ? "Guest client" : Auth.CurrentUser is null ? "" : RolePermissions.DisplayName(Auth.CurrentUser.Role))</div>
+                </div>
+                <button type="button" class="fs-sidebar__signout" @onclick="SignOut">Sign out</button>
+            </div>
+        </aside>
+
+        <div class="fs-main">
+            @if (ShowPageHeader)
+            {
+                <header class="fs-page-header">
+                    <h1 class="fs-page-header__title">@PageTitle</h1>
+                    <div class="fs-page-header__actions">
+                        @HeaderActions
+                    </div>
+                </header>
+            }
+            <div class="fs-page-content @ContentClass @(ShowAppShell ? "fs-page-content--relative" : "")">
+                @if (ShowAppShell && ShowFloatingDecor)
+                {
+                    <FloatingDecor Variant="dashboard" />
+                }
+                @Body
+            </div>
+            @if (ShowAppShell && ShowQuickActions)
+            {
+                <QuickActionsFab />
+            }
+        </div>
+    </div>
+    <Modal IsOpen="ShowThanks"
+           IsOpenChanged="OnThanksClosed"
+           Title="Thank you for visiting"
+           Message="We hope to see you again soon at Flexispace."
+           ButtonLabel="Continue" />
+    </CascadingValue>
+}
+else
+{
+    @Body
+}
+
+<ScrollToError />
+<UnreadAlertsToast />
+
+@code {
+    [Parameter] public RenderFragment? HeaderActions { get; set; }
+
+    private bool ShowAppShell =>
+        Auth.IsAuthenticated &&
+        !IsAuthRoute;
+
+    private bool IsAuthRoute
+    {
+        get
+        {
+            var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/');
+            return path is "" or "login" or "privacy" or "auth/complete" || path.EndsWith("/confirmation");
+        }
+    }
+
+    private bool IsConfirmationRoute =>
+        Navigation.ToBaseRelativePath(Navigation.Uri).Contains("confirmation");
+
+    private bool ShowFloatingDecor =>
+        !IsConfirmationRoute && Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0] is "book" or "live";
+
+    private bool ShowQuickActions
+    {
+        get
+        {
+            var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].TrimEnd('/');
+            return !IsConfirmationRoute && path is not "users" and not "centres";
+        }
+    }
+
+    private bool ShowPageHeader =>
+        ShowAppShell && !IsConfirmationRoute && !IsFullBleed;
+
+    private string ContentClass =>
+        IsFullBleed ? "fs-page-content--full" : "fs-page-content--padded";
+
+    private bool IsFullBleed
+    {
+        get
+        {
+            var path = Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0];
+            return path is "home" or "profile" or "locations" || path.StartsWith("locations/");
+        }
+    }
+
+    private string PageTitle => Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0] switch
+    {
+        "home" => "Dashboard",
+        "book" => "Book a boardroom",
+        "live" => "Live availability",
+        "calendar" => "Calendar",
+        "manage" => "Manage bookings",
+        "users" => "Users",
+        "centres" => "Centres",
+        "manage/catalog" => "Equipment & catering",
+        "audit" => "Audit",
+        "reports" => "Ops Arena",
+        "notifications" => "Alerts",
+        "profile" => "My profile",
+        "my-bookings" => "My bookings",
+        "locations" => "All locations",
+        var p when p.StartsWith("locations/") => "Location details",
+        var p when p.StartsWith("bookings/") && !p.Contains("confirmation") => "Booking details",
+        _ => "Flexispace"
+    };
+
+    private IEnumerable<TabItem> VisibleTabs
+    {
+        get
+        {
+            var role = Auth.CurrentUser?.Role;
+            yield return new("home", "Dashboard", "/home", NavLinkMatch.All);
+            yield return new("book", "Book a room", "/book", NavLinkMatch.Prefix);
+            yield return new("my-bookings", "My bookings", "/my-bookings", NavLinkMatch.Prefix);
+            if (!Auth.IsGuest && role is not null && RolePermissions.CanViewAvailability(role.Value))
+                yield return new("live", "Live availability", "/live", NavLinkMatch.Prefix);
+            if (!Auth.IsGuest)
+                yield return new("calendar", "Calendar", "/calendar", NavLinkMatch.Prefix);
+            if (!Auth.IsGuest && role is not null && RolePermissions.CanOpenManage(role.Value))
+                yield return new("manage", "Manage", "/manage", NavLinkMatch.Prefix);
+            if (!Auth.IsGuest && (role is null || RolePermissions.CanManageUsers(role.Value)))
+                yield return new("users", "Users", "/users", NavLinkMatch.Prefix);
+            if (!Auth.IsGuest && (role is null || RolePermissions.CanManageRooms(role.Value)))
+                yield return new("building", "Centres", "/centres", NavLinkMatch.Prefix);
+                if (!Auth.IsGuest && role == UserRole.Administrator)
+                    yield return new("building", "Equipment & catering", "/manage/catalog", NavLinkMatch.Prefix);
+            if (!Auth.IsGuest && (role is null || RolePermissions.CanViewReports(role.Value)))
+                yield return new("reports", "Reports", "/reports", NavLinkMatch.Prefix);
+            if (!Auth.IsGuest && (role is null || RolePermissions.CanManageUsers(role.Value)))
+                yield return new("audit", "Audit", "/audit", NavLinkMatch.Prefix);
+            if (!Auth.IsGuest)
+                yield return new("alerts", "Alerts", "/notifications", NavLinkMatch.Prefix);
+            yield return new("profile", "Profile", "/profile", NavLinkMatch.Prefix);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Auth.AuthStateChanged += OnAuthChanged;
+        await Auth.EnsureSessionAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        if (!Auth.IsAuthenticated)
+            await Auth.EnsureSessionAsync();
+        if (Auth.IsAuthenticated && !IsAuthRoute && !await Consent.HasAcceptedAsync())
+            Navigation.NavigateTo("/");
+    }
+
+    private bool ShowThanks { get; set; }
+    private Action PromptSignOutHandler => PromptSignOut;
+
+    private void OnAuthChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);
+
+    private void PromptSignOut()
+    {
+        ShowThanks = true;
+        StateHasChanged();
+    }
+
+    private void SignOut() => PromptSignOut();
+
+    private async Task OnThanksClosed(bool open)
+    {
+        ShowThanks = open;
+        if (!open)
+            await Auth.LogoutAsync();
+    }
+
+    public void Dispose() =>
+        Auth.AuthStateChanged -= OnAuthChanged;
+
+    private record TabItem(string Icon, string Label, string Href, NavLinkMatch Match);
+}

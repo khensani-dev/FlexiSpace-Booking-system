@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:Flexispace.Mobile.ViewModels"
+             x:Class="Flexispace.Mobile.Views.BookingConfirmationPage"
+             x:DataType="vm:BookingConfirmationViewModel"
+             Title="Confirmed"
+             BackgroundColor="{DynamicResource BrandPage}"
+             Shell.NavBarIsVisible="False">
+
+    <Grid>
+        <ScrollView>
+            <VerticalStackLayout x:Name="ConfirmContent" Padding="24,36,24,28" Spacing="16"
+                                 VerticalOptions="Center" MaximumWidthRequest="480" HorizontalOptions="Center">
+
+                <Border x:Name="CelebrateBadge" Style="{StaticResource QuickActionOrb}"
+                        WidthRequest="88" HeightRequest="88" HorizontalOptions="Center"
+                        BackgroundColor="{StaticResource BrandGold}"
+                        IsVisible="{Binding IsConfirmed}">
+                    <Border.Shadow>
+                        <Shadow Brush="{DynamicResource BrandGoldDeep}" Opacity="0.5" Radius="18" Offset="0,6" />
+                    </Border.Shadow>
+                    <Label Style="{StaticResource MaterialGlyph}" Text="&#xe86c;" FontSize="40" TextColor="{StaticResource BrandBlack}" />
+                </Border>
+
+                <Label Text="BOOKED" Style="{StaticResource EyebrowLabel}"
+                       HorizontalTextAlignment="Center"
+                       IsVisible="{Binding IsConfirmed}" />
+
+                <Label Text="Your boardroom is ready." Style="{StaticResource SectionTitle}"
+                       HorizontalTextAlignment="Center" FontSize="26"
+                       IsVisible="{Binding IsConfirmed}" />
+
+                <Border Style="{StaticResource ElevatedCard}" Padding="0" IsVisible="{Binding HasBooking}">
+                    <Border.Stroke>
+                        <SolidColorBrush Color="{StaticResource BrandGold}" />
+                    </Border.Stroke>
+                    <Grid ColumnDefinitions="4,*">
+                        <BoxView Color="{StaticResource BrandGold}" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="8" Padding="18,16">
+                            <Label Text="{Binding ReferenceLabel}"
+                                   IsVisible="{Binding ReferenceLabel, Converter={StaticResource StringNotEmptyConverter}}"
+                                   Style="{StaticResource EyebrowLabel}"
+                                   HorizontalTextAlignment="Center" />
+                            <Label Text="{Binding RoomName}" TextColor="{DynamicResource BrandInk}" FontAttributes="Bold" FontSize="20" HorizontalTextAlignment="Center" />
+                            <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                                <Label Style="{StaticResource MaterialGlyph}" Text="&#xe55f;" FontSize="14" TextColor="{StaticResource BrandGold}" />
+                                <Label Text="{Binding LocationName}" TextColor="{DynamicResource BrandMuted}" FontSize="14" VerticalOptions="Center" />
+                            </HorizontalStackLayout>
+                            <HorizontalStackLayout Spacing="6" HorizontalOptions="Center">
+                                <Label Style="{StaticResource MaterialGlyph}" Text="&#xe878;" FontSize="14" TextColor="{StaticResource BrandGold}" />
+                                <Label Text="{Binding WhenLabel}" TextColor="{DynamicResource BrandInk}" FontSize="14" VerticalOptions="Center" LineBreakMode="WordWrap" />
+                            </HorizontalStackLayout>
+                            <Border Style="{StaticResource StatusPillBorder}" BackgroundColor="{DynamicResource BrandSuccess}"
+                                    HorizontalOptions="Center" IsVisible="{Binding IsConfirmed}">
+                                <Label Text="{Binding StatusLabel}" Style="{StaticResource StatusPillText}" />
+                            </Border>
+                        </VerticalStackLayout>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource ElevatedCard}" Padding="16" IsVisible="{Binding HasFacts}">
+                    <VerticalStackLayout Spacing="10">
+                        <Grid ColumnDefinitions="108,*" ColumnSpacing="8" IsVisible="{Binding BookerLabel, Converter={StaticResource StringNotEmptyConverter}}">
+                            <Label Text="BOOKED BY" Style="{StaticResource EyebrowLabel}" />
+                            <Label Grid.Column="1" Text="{Binding BookerLabel}" TextColor="{DynamicResource BrandInk}" FontSize="14" />
+                        </Grid>
+                        <Grid ColumnDefinitions="108,*" ColumnSpacing="8" IsVisible="{Binding CompanyLabel, Converter={StaticResource StringNotEmptyConverter}}">
+                            <Label Text="COMPANY" Style="{StaticResource EyebrowLabel}" />
+                            <Label Grid.Column="1" Text="{Binding CompanyLabel}" TextColor="{DynamicResource BrandInk}" FontSize="14" />
+                        </Grid>
+                        <Grid ColumnDefinitions="108,*" ColumnSpacing="8" IsVisible="{Binding AttendeesLabel, Converter={StaticResource StringNotEmptyConverter}}">
+                            <Label Text="ATTENDEES" Style="{StaticResource EyebrowLabel}" />
+                            <Label Grid.Column="1" Text="{Binding AttendeesLabel}" TextColor="{DynamicResource BrandInk}" FontSize="14" />
+                        </Grid>
+                        <Grid ColumnDefinitions="108,*" ColumnSpacing="8" IsVisible="{Binding EquipmentLabel, Converter={StaticResource StringNotEmptyConverter}}">
+                            <Label Text="EQUIPMENT" Style="{StaticResource EyebrowLabel}" />
+                            <Label Grid.Column="1" Text="{Binding EquipmentLabel}" TextColor="{DynamicResource BrandInk}" FontSize="14" LineBreakMode="WordWrap" />
+                        </Grid>
+                        <Grid ColumnDefinitions="108,*" ColumnSpacing="8" IsVisible="{Binding CateringLabel, Converter={StaticResource StringNotEmptyConverter}}">
+                            <Label Text="CATERING" Style="{StaticResource EyebrowLabel}" />
+                            <Label Grid.Column="1" Text="{Binding CateringLabel}" TextColor="{DynamicResource BrandInk}" FontSize="14" LineBreakMode="WordWrap" />
+                        </Grid>
+                        <Grid ColumnDefinitions="108,*" ColumnSpacing="8" IsVisible="{Binding NotesLabel, Converter={StaticResource StringNotEmptyConverter}}">
+                            <Label Text="NOTES" Style="{StaticResource EyebrowLabel}" />
+                            <Label Grid.Column="1" Text="{Binding NotesLabel}" TextColor="{DynamicResource BrandInk}" FontSize="14" LineBreakMode="WordWrap" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+                <Label Text="{Binding MissingLabel}"
+                       Style="{StaticResource MutedLabel}"
+                       HorizontalTextAlignment="Center"
+                       IsVisible="{Binding MissingLabel, Converter={StaticResource StringNotEmptyConverter}}" />
+
+                <Label Text="A confirmation is in Alerts."
+                       Style="{StaticResource MutedLabel}" HorizontalTextAlignment="Center"
+                       IsVisible="{Binding IsConfirmed}" />
+
+                <Button Text="Open in Alerts" Command="{Binding ViewAlertsCommand}" Style="{StaticResource GoldButton}" />
+                <Button Text="View my bookings" Command="{Binding ViewBookingsCommand}" Style="{StaticResource GhostButton}" />
+                <Button Text="Back to home" Command="{Binding DoneCommand}" Style="{StaticResource GhostButton}" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <AbsoluteLayout x:Name="FireworksLayer"
+                        InputTransparent="True"
+                        CascadeInputTransparent="True"
+                        IsVisible="False" />
+    </Grid>
+</ContentPage>
