@@ -15,7 +15,7 @@ Everyone signs in with their **Microsoft Entra ID** (Microsoft 365) account. Ent
 | | |
 |---|---|
 | Demo video | [FlexiSpace walkthrough (YouTube)](https://youtu.be/u7t71c99ZCk) |
-| Hosted API (Azure App Service, South Africa North) | |
+| Hosted API (Azure App Service, South Africa North) |https://flexispace-exdye9dzg3bhejh9.southafricanorth-01.azurewebsites.net/ |
 | Team repository | https://github.com/EMGPRS/insy7315-2026-insy7315-2026-final-project-maluleke-khensani.git |
 
 ---
